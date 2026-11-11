@@ -12,7 +12,7 @@ canvas#c{display:block;position:fixed;inset:0;width:100vw;height:100vh;height:10
 #hud{position:fixed;top:calc(env(safe-area-inset-top) + 8px);left:8px;right:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none;z-index:2}
 .pill{background:rgba(20,16,12,.78);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px 10px;font-size:13px;line-height:1.35}
 #hudR{display:flex;align-items:center;gap:8px}
-#tgt{width:40px;height:46px;background:rgba(255,255,255,.08);border-radius:8px}
+#tgt{width:50px;height:58px;background:rgba(255,255,255,.08);border-radius:8px}
 #stat{font-weight:700;font-size:14px}
 #dangerBar{height:7px;width:90px;background:rgba(255,255,255,.12);border-radius:4px;overflow:hidden;margin-top:4px}
 #dangerFill{height:100%;width:0;background:#ff5a3c;transition:width .2s}
@@ -20,11 +20,12 @@ canvas#c{display:block;position:fixed;inset:0;width:100vw;height:100vh;height:10
 #act{right:calc(env(safe-area-inset-right) + 20px);bottom:calc(env(safe-area-inset-bottom) + 24px);width:86px;height:86px;font-size:20px;color:rgba(255,255,255,.45)}
 #act.on{background:#b8322a;color:#fff;border-color:#ffd7a0;box-shadow:0 0 22px rgba(255,90,60,.8)}
 #act.stun{background:#2f6fb8;color:#fff;border-color:#bfe0ff;box-shadow:0 0 22px rgba(80,160,255,.8)}
+#run,#smoke,#dis{display:none!important}
 #run{right:calc(env(safe-area-inset-right) + 32px);bottom:calc(env(safe-area-inset-bottom) + 124px);width:62px;height:62px;font-size:14px}
 #run.on{background:#d98a2b;color:#1b1309}
 #smoke{right:calc(env(safe-area-inset-right) + 32px);bottom:calc(env(safe-area-inset-bottom) + 196px);width:62px;height:62px;font-size:12px}
 #dis{left:calc(env(safe-area-inset-left) + 30px);bottom:calc(env(safe-area-inset-bottom) + 264px);width:62px;height:62px;font-size:12px}
-#eye{left:calc(env(safe-area-inset-left) + 30px);bottom:calc(env(safe-area-inset-bottom) + 190px);width:62px;height:62px;font-size:12px;background:rgba(30,40,70,.8);color:#cfe3ff}
+#eye{right:calc(env(safe-area-inset-right) + 32px);bottom:calc(env(safe-area-inset-bottom) + 124px);width:62px;height:62px;font-size:12px;background:rgba(30,40,70,.8);color:#cfe3ff}
 .btn.cd{opacity:.45}
 #ov{position:fixed;inset:0;background:rgba(15,12,9,.88);display:flex;align-items:center;justify-content:center;z-index:5;padding:16px;overflow:auto;touch-action:auto}
 #ov *{touch-action:manipulation}
@@ -50,8 +51,8 @@ table.sb{width:100%;border-collapse:collapse;margin:8px 0}table.sb td{padding:6p
 <body>
 <canvas id="c"></canvas>
 <div id="hud">
-  <div class="pill" id="hudL"><div id="stat">גלוי</div><div class="small" id="dangerLbl">סכנה</div><div id="dangerBar"><div id="dangerFill"></div></div></div>
-  <div class="pill" id="hudR"><div><div>המטרה שלך</div><div id="score" class="small"></div></div><canvas id="tgt" width="80" height="92"></canvas></div>
+  <div class="pill" id="hudL"><div id="score" style="font-weight:700;font-size:15px"></div><div id="dangerLbl" class="small" style="margin-top:4px">צייד: רחוק</div><div id="dangerBar"><div id="dangerFill"></div></div></div>
+  <div class="pill" id="hudR"><div style="text-align:center;font-weight:700;font-size:14px">המטרה<br>שלך</div><canvas id="tgt" width="100" height="116"></canvas></div>
 </div>
 <button id="act" class="btn">חסל</button>
 <button id="run" class="btn">ריצה</button>
@@ -177,7 +178,7 @@ function hostLobby(){lobby=[...H.players.values()].map(p=>({id:p.id,name:p.name,
 function assignTarget(P){const c=[...H.players.values()].filter(o=>o!==P);if(!c.length){P.target=null;return;}
   const cnt=new Map(c.map(o=>[o.id,0]));for(const o of H.players.values())if(o.target&&cnt.has(o.target))cnt.set(o.target,cnt.get(o.target)+1);
   const min=Math.min(...cnt.values());let pool=c.filter(o=>cnt.get(o.id)===min);if(pool.length>1&&P.lastVictim){const f=pool.filter(o=>o.id!==P.lastVictim);if(f.length)pool=f;}P.target=(pick(pool)||pick(c)).id;}
-function spawnPoint(){let best=null,bs=-1;for(let i=0;i<10;i++){const p=randFree(20);let m=1e9;for(const o of H.players.values())if(!o.dead)m=Math.min(m,Math.hypot(o.x-p.x,o.y-p.y));if(m>bs){bs=m;best=p;}}return best;}
+function spawnPoint(){let best=null,bs=-1;for(let i=0;i<10;i++){const p=randFree(70);let m=1e9;for(const o of H.players.values())if(!o.dead)m=Math.min(m,Math.hypot(o.x-p.x,o.y-p.y));if(m>bs){bs=m;best=p;}}return best;}
 function hostStart(){
   matchOn=true;H.endAt=performance.now()+CONFIG.matchSec*1000;H.eventT=CONFIG.eventEvery;
   const ps=[...H.players.values()].sort(()=>Math.random()-.5);
@@ -282,7 +283,7 @@ function clientHandle(m){
   if(m.t==='w'){applySnap(m);return;}
   if(m.t==='wel'){ME.id=m.id;ME.code=m.code;ME.role=ME.role||'client';showRoom();return;}
   if(m.t==='lob'){lobby=m.pl;for(const p of m.pl)names[p.id]=p.name;if(!m.run&&!endShown&&!ov.classList.contains('hide')&&ME.role)showRoom();return;}
-  if(m.t==='go'){endShown=false;me.x=m.x;me.y=m.y;me.dead=false;me.path=null;bodies=[];feed=[];hideOv();matchOn=true;showFlash('המצוד התחיל! מצא את המטרה שלך');return;}
+  if(m.t==='go'){endShown=false;me.x=m.x;me.y=m.y;me.dead=false;me.path=null;bodies=[];feed=[];hideOv();matchOn=true;showFlash('המצוד התחיל!');showTut(0);return;}
   if(m.t==='rs'){me.x=m.x;me.y=m.y;me.dead=false;me.path=null;showFlash('חזרת לעיר. המשך לצוד');return;}
   if(m.t==='end'){matchOn=false;names=Object.assign(names,m.names||{});showEnd(m.s);return;}
   if(m.t==='e')onEvent(m);
@@ -387,7 +388,7 @@ function draw(){
   ctx.setTransform(DPR,0,0,DPR,0,0);ctx.fillStyle='#1b1712';ctx.fillRect(0,0,W,Hh);
   if(!READY)return;
   const vw=W/zoom,vh=Hh/zoom,fx=matchOn?me.x:PLAZA.x,fy=matchOn?me.y:PLAZA.y;
-  camX=vw>=WW?(WW-vw)/2:clamp(fx-vw/2,0,WW-vw);camY=vh>=WH?(WH-vh)/2:clamp(fy-vh/2,0,WH-vh);
+  camX=clamp(fx-vw/2,-140,WW-vw+140);camY=clamp(fy-vh*0.42,-160,WH-vh+260);
   ctx.setTransform(DPR*zoom,0,0,DPR*zoom,-camX*DPR*zoom,-camY*DPR*zoom);
   ctx.fillStyle=PAT.sand;ctx.fillRect(0,0,WW,WH);
   ctx.fillStyle=PAT.cobble;ctx.fillRect(480,250,410,380);ctx.strokeStyle='rgba(90,60,30,.25)';ctx.lineWidth=2;ctx.strokeRect(480,250,410,380);
@@ -427,7 +428,6 @@ function draw(){
   // ---- מסך ----
   ctx.setTransform(DPR,0,0,DPR,0,0);
   if(matchOn){radar(T);
-    ctx.font='bold 14px system-ui';ctx.textAlign='center';const mm=Math.floor(remaining/60),ss=String(remaining%60).padStart(2,'0');ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillText(`⏱ ${mm}:${ss}`,W/2+1,58+1);ctx.fillStyle='#fff';ctx.fillText(`⏱ ${mm}:${ss}`,W/2,58);
     ctx.textAlign='right';ctx.font='12px system-ui';feed.forEach((f,i)=>{ctx.fillStyle=`rgba(255,240,210,${Math.min(1,f.k)})`;ctx.fillText(f.t,W-12,190+i*16);});
     if(me.dead){ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,0,W,Hh);ctx.font='bold 22px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('חוזר לעיר…',W/2,Hh/2);}}
   if(hitFx>0){ctx.fillStyle=`rgba(200,20,10,${hitFx*.45})`;ctx.fillRect(0,0,W,Hh);}
@@ -461,8 +461,8 @@ function hud(){
   const col=me.expose||me.stun>0?'#ff6b55':me.hidden?'#9be38a':me.blended?'#7fd6ff':me.running?'#ffb347':'#f3ead8';
   const c=candidate(),cls=c?'on':'';
   const T=dP.get(me.target),tl=T&&!T.dead?T.look:-1;
-  const key=st+me.score+cls+Math.ceil(cdLocal.smoke)+Math.ceil(cdLocal.dis)+Math.ceil(eye.cd)+tl;if(key===hudKey)return;hudKey=key;
-  $('stat').textContent=st;$('stat').style.color=col;$('score').textContent='ניקוד: '+me.score;
+  const key=st+remaining+(danger*10|0)+me.score+cls+Math.ceil(cdLocal.smoke)+Math.ceil(cdLocal.dis)+Math.ceil(eye.cd)+tl;if(key===hudKey)return;hudKey=key;
+  const mm=Math.floor(remaining/60),ss=String(remaining%60).padStart(2,'0');$('score').textContent=`⏱ ${mm}:${ss}   ⭐ ${me.score}`;$('dangerLbl').textContent=danger>.7?'⚠ צייד: ממש לידך!':danger>.35?'צייד: מתקרב':'צייד: רחוק';
   $('act').className='btn '+cls;
   const cd=(id,v,t)=>{$(id).classList.toggle('cd',v>0);$(id).innerHTML=v>0?t.split('<br>')[0]+'<br>'+Math.ceil(v):t;};
   cd('smoke',cdLocal.smoke,'💨<br>עשן');cd('dis',cdLocal.dis,'🎭<br>תחפושת');cd('eye',eye.cd,'👁<br>עין');
@@ -471,26 +471,24 @@ function hud(){
 
 // ================== מסכים ==================
 const ov=$('ov'),card=$('card');
-function hideOv(){ov.classList.add('hide');}
+function hideOv(){ov.classList.add('hide');ov.style.background='';}
 function setErr(t){const e=$('err');if(e)e.textContent=t;}
 function saveName(){try{localStorage.setItem('bhh-name',ME.name);}catch(e){}}
 function loadName(){try{return localStorage.getItem('bhh-name')||'';}catch(e){return'';}}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function renderLobby(){if(ME.role)return;
   const pre=(qs.get('room')||'').toUpperCase();
-  card.innerHTML=`<h1>בין ההמון: מצוד</h1>
-  <p>כל השחקנים מחופשים לאזרחים. כל אחד צד מישהו, ומישהו צד אותו.</p>
-  <ul>
-    <li>בפינה רואים <b>איך נראית המטרה שלך</b>, והמכ"ם מצביע אליה. בעיר יש כפילים שנראים בדיוק כמוה.</li>
-    <li>חיסול כשאתה נטמע בהמון = <b>200</b> נקודות. חיסול בריצה או בגלוי = 100.</li>
-    <li>פס ה<b>סכנה</b> מתמלא כשהצייד שלך קרוב. זיהית אותו? לחץ עליו "חסל" כדי להדוף אותו, ותקבל 75.</li>
-    <li>פגיעה באזרח או בשחקן לא נכון = ‎-50, ואתה מסומן לכולם.</li>
-    <li>💨 עשן מקפיא את מי שסביבך. 🎭 תחפושת מחליפה לך בגדים. 👁 עין מסמנת את המטרה.</li>
-  </ul>
+  card.innerHTML=`<h1>בין ההמון</h1>
+  <p style="text-align:center">כולם מחופשים לאזרחים. אתה צד מישהו, ומישהו צד אותך.</p>
   <input id="nm" placeholder="השם שלך" maxlength="14" value="${esc(loadName())}">
   ${pre?`<p>הוזמנת לחדר <b>${esc(pre)}</b></p><button id="bJoin">הצטרף למשחק</button><button class="sec" id="bNew">צור חדר חדש במקום</button>`:
   `<button id="bNew">צור חדר חדש</button><div class="row"><input id="cd" placeholder="קוד חדר" maxlength="4" style="text-transform:uppercase;direction:ltr;text-align:center"><button class="sec" id="bJoin" style="margin-top:6px">הצטרף</button></div>`}
-  <div class="err" id="err"></div>`;
+  <div class="err" id="err"></div>
+  <details style="margin-top:8px"><summary style="font-size:15px">איך משחקים?</summary>
+  <ul><li>למעלה בצד רואים <b>איך נראית המטרה שלך</b>. החץ במרכז מראה לאן ללכת.</li>
+  <li>כשהיא לידך לוחצים <b>חסל</b>. מתוך קבוצת אנשים = יותר נקודות.</li>
+  <li>פס ה<b>צייד</b> מתמלא כשמי שצד אותך קרוב. חסל אותו לפני שהוא מחסל אותך.</li>
+  <li>פגיעה באדם הלא נכון = הפסד נקודות.</li></ul></details>`;
   if(!READY){$('bNew').disabled=true;$('bJoin').disabled=true;setErr('טוען…');}
   $('bNew').onclick=()=>createRoom();$('bJoin').onclick=()=>joinRoom(pre||$('cd').value);
 }
@@ -516,6 +514,14 @@ function showEnd(s){endShown=true;
   ${host?'<button id="bAgain">משחק חוזר</button>':'<p style="text-align:center">ממתין שהמארח יתחיל משחק חוזר…</p>'}`;
   ov.classList.remove('hide');if(host)$('bAgain').onclick=()=>hostStart();
 }
+const TUT=[
+ ['זה אתה','הדמות עם <b>הטבעת הצהובה</b> ו"אתה" מעל הראש.<br>זזים עם <b>העיגול למטה משמאל</b>, או בהקשה על המפה.'],
+ ['זאת המטרה שלך','בפינה למעלה רואים <b>איך היא נראית</b>.<br><b>החץ</b> במרכז המסך מראה לאן ללכת.<br>זהירות: יש בעיר כפילים שנראים בדיוק כמוה.'],
+ ['לחסל','כשהיא לידך, לחץ <b>חסל</b> (הכפתור האדום).<br>אם אתה בתוך קבוצת אנשים, תקבל כפול נקודות.'],
+ ['מישהו צד אותך!','כשפס <b>הצייד</b> למעלה מתמלא, הוא קרוב.<br>זיהית אותו? לחץ עליו חסל כדי להדוף אותו.']];
+function showTut(i){if(i>=TUT.length){hideOv();return;}
+  card.innerHTML=`<h2>${TUT[i][0]}</h2><p style="text-align:center;font-size:16px;line-height:1.7">${TUT[i][1]}</p><button id="bT">${i<TUT.length-1?'הבא ('+(i+1)+'/'+TUT.length+')':'יאללה!'}</button>${i===0?'<button class="sec" id="bSkip">דלג</button>':''}`;
+  ov.style.background='rgba(15,12,9,.4)';ov.classList.remove('hide');$('bT').onclick=()=>showTut(i+1);if(i===0)$('bSkip').onclick=()=>hideOv();}
 function showMsg(t,b,reload){card.innerHTML=`<h2>${t}</h2><p>${b}</p>${reload?'<button id="bR">חזרה למסך הראשי</button>':''}`;ov.classList.remove('hide');if(reload)$('bR').onclick=()=>location.href=location.pathname;}
 renderLobby();
 
