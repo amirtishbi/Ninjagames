@@ -289,22 +289,25 @@ function hostUpdate(dt){
   for(let i=H.npcQueue.length-1;i>=0;i--){const q=H.npcQueue[i];q.t-=dt;if(q.t<=0){H.npcQueue.splice(i,1);const p=randFree();mkNpc(p.x,p.y,q.look);}}
   if(matchOn){remaining=Math.max(0,(H.endAt-performance.now())/1000);H.eventT-=dt;if(H.eventT<=0){H.eventT=CONFIG.eventEvery;hostEvent();}
     if(remaining<=0){matchOn=false;const s=[...H.players.values()].map(p=>[p.id,p.score,p.kills]).sort((a,b)=>b[1]-a[1]);broadcast({t:'end',s,names});hostLobby();}}
-  H.bcast-=dt;const snap=hostSnap();applySnap(snap);if(H.bcast<=0){H.bcast=1/12;for(const P of H.players.values())if(!P.bot&&P.id!==ME.id&&P.conn&&P.conn.open)P.conn.send(snap);}
+  H.bcast-=dt;const snap=hostSnap();applySnap(snap);if(H.bcast<=0){H.bcast=1/15;for(const P of H.players.values())if(!P.bot&&P.id!==ME.id&&P.conn&&P.conn.open)P.conn.send(snap);}
 }
-function hostSnap(){const n=[];for(const c of H.npcs){if(Math.abs(c.vx||0)>3)c.face=c.vx<0?-1:1;n.push(c.id,c.x|0,c.y|0,c.face<0?1:0,c.look);}
-  const p=[];for(const P of H.players.values())p.push([P.id,P.x|0,P.y|0,P.face<0?1:0,P.look,P.target||0,P.score,Math.round(P.stun*10),P.expose>0?1:0,P.dead?1:0,P.bot?1:0,P.chase?P.target:0,P.roof>=0?1:0]);
+function hostSnap(){const n=[];for(const c of H.npcs){if(Math.abs(c.vx||0)>3)c.face=c.vx<0?-1:1;n.push(c.id,Math.round(c.x*10)/10,Math.round(c.y*10)/10,c.face<0?1:0,c.look);}
+  const p=[];for(const P of H.players.values())p.push([P.id,Math.round(P.x*10)/10,Math.round(P.y*10)/10,P.face<0?1:0,P.look,P.target||0,P.score,Math.round(P.stun*10),P.expose>0?1:0,P.dead?1:0,P.bot?1:0,P.chase?P.target:0,P.roof>=0?1:0]);
   return{t:'w',T:Math.ceil(remaining),run:matchOn?1:0,n,p};}
 
 // ================== לקוח: מצב מוצג ==================
 const dN=new Map(),dP=new Map();
 const me={x:60,y:300,r:7,face:1,vx:0,vy:0,running:false,blended:false,hidden:false,sitting:false,path:null,target:0,score:0,stun:0,expose:0,dead:false,look:0};
 let endShown=false,bodies=[],smokes=[],feed=[],flash={t:'',k:0},hitFx=0,eye={t:0,cd:0},cdLocal={smoke:0,dis:0},sendT=0,firstSnap=false;
+function pushSample(e,x,y,t){const p1=e.p1;if(!p1||Math.hypot(x-p1.x,y-p1.y)>90){e.p0={x,y,t:t-60};e.p1={x,y,t};e.x=x;e.y=y;return;}if(t-p1.t<5){p1.x=x;p1.y=y;return;}
+  const cx=e.x,cy=e.y;e.p0={x:cx,y:cy,t:p1.t};e.p1={x,y,t};}
 function applySnap(m){
   remaining=m.T;matchOn=!!m.run;
-  const seen=new Set();for(let i=0;i<m.n.length;i+=5){const id=m.n[i];let e=dN.get(id);if(!e){e={id,x:m.n[i+1],y:m.n[i+2]};dN.set(id,e);}e.tx=m.n[i+1];e.ty=m.n[i+2];e.face=m.n[i+3]?-1:1;e.look=m.n[i+4];seen.add(id);}
+  const now=performance.now();
+  const seen=new Set();for(let i=0;i<m.n.length;i+=5){const id=m.n[i];let e=dN.get(id);if(!e){e={id,x:m.n[i+1],y:m.n[i+2]};dN.set(id,e);}e.tx=m.n[i+1];e.ty=m.n[i+2];pushSample(e,e.tx,e.ty,now);e.face=m.n[i+3]?-1:1;e.look=m.n[i+4];seen.add(id);}
   for(const id of [...dN.keys()])if(!seen.has(id))dN.delete(id);
   const sp=new Set();for(const a of m.p){const id=a[0];sp.add(id);let e=dP.get(id);if(!e){e={id,x:a[1],y:a[2]};dP.set(id,e);}
-    Object.assign(e,{tx:a[1],ty:a[2],face:a[3]?-1:1,look:a[4],target:a[5],score:a[6],stun:a[7]/10,expose:a[8],dead:a[9],bot:a[10],chase:a[11]||0,roof:a[12]||0});
+    Object.assign(e,{tx:a[1],ty:a[2],face:a[3]?-1:1,look:a[4],target:a[5],score:a[6],stun:a[7]/10,expose:a[8],dead:a[9],bot:a[10],chase:a[11]||0,roof:a[12]||0});pushSample(e,a[1],a[2],now);
     if(id===ME.id){me.chase=a[11]||0;me.target=a[5];me.score=a[6];me.stun=a[7]/10;me.expose=a[8];me.look=a[4];if(a[9]&&!me.dead)me.dead=true;}}
   for(const id of [...dP.keys()])if(!sp.has(id))dP.delete(id);
   firstSnap=true;
@@ -391,10 +394,10 @@ function ctxAct(){if(!me.ctx||me.dead||me.stun>0)return;
 function localUpdate(dt){
   if(flash.k>0)flash.k-=dt;if(hitFx>0)hitFx-=dt;eye.t=Math.max(0,eye.t-dt);for(const k in abCd)abCd[k]=Math.max(0,abCd[k]-dt);sprintT=Math.max(0,sprintT-dt);
   for(const f of feed)f.k-=dt;feed=feed.filter(f=>f.k>0);for(const b of bodies)b.t-=dt;bodies=bodies.filter(b=>b.t>0);for(const s of smokes)s.t-=dt;smokes=smokes.filter(s=>s.t>0);
-  const sm=Math.min(1,dt*10);
-  for(const e of [...dN.values(),...dP.values()]){if(e.px!==undefined){const v=Math.hypot(e.x-e.px,e.y-e.py)/Math.max(dt,.001);e.mv=e.mv===undefined?v:e.mv*.8+v*.2;e.ph=(e.ph||0)+dt*Math.min(e.mv,130)*.22;}e.px=e.x;e.py=e.y;}
-  for(const e of [...dN.values(),...dP.values()]){if(e.id===ME.id)continue;const dx=e.tx-e.x,dy=e.ty-e.y;if(Math.abs(dx)+Math.abs(dy)>90){e.x=e.tx;e.y=e.ty;}else{e.x+=dx*sm;e.y+=dy*sm;}}
-  for(const e of [...dN.values(),...dP.values()]){if(e.qx!==undefined){const vx=(e.x-e.qx)/Math.max(dt,.001),vy=(e.y-e.qy)/Math.max(dt,.001);e.svx=(e.svx||0)*.85+vx*.15;e.svy=(e.svy||0)*.85+vy*.15;}e.qx=e.x;e.qy=e.y;}
+  const now=performance.now();
+  for(const e of [...dN.values(),...dP.values()]){if(e.id===ME.id||!e.p1)continue;const p0=e.p0,p1=e.p1,span=Math.max(16,p1.t-p0.t),a=ME.role==='host'?1:clamp((now-p1.t)/span,0,1);
+    e.x=p0.x+(p1.x-p0.x)*a;e.y=p0.y+(p1.y-p0.y)*a;const ax=(p1.x-p0.x)/(span/1000),ay=(p1.y-p0.y)/(span/1000);
+    e.svx=(e.svx||0)*.8+ax*.2;e.svy=(e.svy||0)*.8+ay*.2;e.mv=Math.hypot(e.svx,e.svy);e.ph=(e.ph||0)+dt*Math.min(e.mv,130)*.22;}
   if(!matchOn||me.dead){return;}
   if(me.roof===undefined)me.roof=-1;
   if(me.climb>0){me.climb-=dt;me.vx=me.vy=0;if(me.climb<=0){me.roof=me.climbTo;const b=BUILD[me.roof];me.x=clamp(me.x,b[0]+8,b[0]+b[2]-8);me.y=clamp(me.y,b[1]+8,b[1]+b[3]-8);me.path=null;SND.step(true);showFlash('על הגג! מכאן אפשר לקפוץ על המטרה');}sendState(dt);return;}
@@ -467,7 +470,8 @@ function tintSprite(img,col){const c=document.createElement('canvas');c.width=im
     if(sat<.42&&l>.45){const k=Math.min(1.3,l/.78);p[i]=Math.min(255,tr*k);p[i+1]=Math.min(255,tg*k);p[i+2]=Math.min(255,tb*k);}}
   x.putImageData(d,0,0);return c;}
 function lookImg(li,fr,d){const L=LOOKS[li]||LOOKS[0];if(fr===undefined)fr=1;if(!d)d='f';const suf=d==='f'?'_f':(d==='l'||d==='r')?'_s':'';let nm=L.s+suf+fr;if(!IM[nm])nm=IM[L.s+fr]?L.s+fr:L.s;const k=nm+L.c;return tintCache[k]||(tintCache[k]=tintSprite(IM[nm],L.c));}
-function dir4(e,vx,vy){const sp=Math.hypot(vx||0,vy||0);if(sp>8){e.lm=time;e.d4=Math.abs(vy)>Math.abs(vx)*.85?(vy>0?'f':'b'):(vx<0?'l':'r');}else if(time-(e.lm||0)>.6)e.d4='f';return e.d4||'f';}
+function dir4(e,vx,vy){const sp=Math.hypot(vx||0,vy||0);let want;if(sp>12){e.lm=time;want=Math.abs(vy)>Math.abs(vx)?(vy>0?'f':'b'):(vx<0?'l':'r');}else want=time-(e.lm||0)>.6?'f':(e.d4||'f');
+  if(!e.d4)e.d4=want;if(want!==e.d4){if(e.wd!==want){e.wd=want;e.wt=time;}if(time-e.wt>.18)e.d4=want;}else e.wd=null;return e.d4;}
 const frameOf=e=>e&&e.mv>8?Math.floor((e.ph||0)/(Math.PI/2))%4:1;
 function drawChar(img,x,y,flip,alpha,e){const w=img.width*SK,h=img.height*SK;const mv=e&&e.mv>8,ph=e?e.ph||0:0,bob=mv?Math.abs(Math.sin(ph*2))*1:0,rot=0;
   ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(x,y+9,w*.34,w*.15,0,0,7);ctx.fill();
