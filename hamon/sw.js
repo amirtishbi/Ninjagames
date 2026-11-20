@@ -1,5 +1,5 @@
 // Big Head Hunt service worker: the page always comes fresh from the network; sounds and images are kept on the phone.
-const V='d973eb95e4',SFXV='3d12a3da',ASSET='bhh-sfx-'+SFXV;
+const V='3ccb70a45a',SFXV='3d12a3da',ASSET='bhh-sfx-'+SFXV;
 const SFX=['tick','ping','tired','felt','roleswap','sit','booth','link','sink','wind','click','exposed','flash','good','heartbeat','idswap','lamp','lose','mark','marked','music','smoke','sonar','step','stunned','swallow','win','wrong'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(ASSET).then(c=>c.addAll(SFX.map(n=>'sfx/'+n+'.mp3?v='+SFXV))).catch(()=>{}));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==ASSET).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
