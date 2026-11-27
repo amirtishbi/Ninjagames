@@ -34,18 +34,16 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;j
 .blush{animation:blush .45s}
 .used{opacity:.28;text-decoration:line-through}
 .win{background:#fff0b3;animation:winpulse 1s 2}
-.cm{color:var(--mom)}.cd{color:var(--dad)}.cs{color:var(--son)}.cg{color:var(--dau)}.cc{color:#ff8a00}.cx{color:#9a8b7a}.csum{color:#3a2a1a}
+.p4{color:#2f7fff}.p3{color:#e5484d}.p2{color:#17a673}.p1{color:#9b5cff}.cx{color:#5a4632}
 .panel{display:flex;flex-direction:column;align-items:center;gap:1.1dvh;min-width:min(88vw,420px)}
 .expr{direction:ltr;font-size:min(6.6dvh,11vw);font-weight:800;background:#fff;border-radius:22px;padding:.6dvh 5vw;min-width:min(80vw,380px);min-height:min(8dvh,76px);display:flex;align-items:center;justify-content:center;gap:.25em;box-shadow:0 4px 0 #f0d9bb}
 .expr .q{display:inline-flex;min-width:1.3em;justify-content:center;border-bottom:4px dashed #d8b98f;color:#3a2a1a}
 .expr .em{font-size:.55em}
-.expr .crt{font-size:.75em;color:#ff8a00}
+.expr .crt{font-size:.75em}
 .hint{direction:ltr;font-size:min(3.4dvh,5.6vw);color:#8a6400;min-height:3dvh;text-align:center;font-weight:600;padding:0 3vw}
 .keypad{direction:ltr;display:grid;grid-template-columns:repeat(3,var(--k));gap:min(1.4dvh,14px) min(6vw,30px)}
 .key{width:var(--k);height:var(--k);font-size:calc(var(--k)*.46);border:0;border-radius:50%;background:#fff;box-shadow:0 4px 0 #e6cfae;font-family:inherit;font-weight:800;color:var(--ink);cursor:pointer}
 .key:active{transform:translateY(3px);box-shadow:0 1px 0 #e6cfae}
-.key.ok{background:#c9f7de;box-shadow:0 4px 0 #8fd9b0}
-.key.del{background:#ffe1e1;box-shadow:0 4px 0 #f2b3b3}
 .bigbtn{width:min(26dvh,50vw);height:min(18dvh,34vw);font-size:min(10dvh,18vw);border:0;border-radius:28px;background:#fff;box-shadow:0 6px 0 #e6cfae;cursor:pointer;animation:pulse 1.3s infinite;font-family:inherit}
 .bigbtn:active{transform:translateY(4px);box-shadow:0 2px 0 #e6cfae}
 .shake{animation:shake .45s}
@@ -157,7 +155,7 @@ function buildBoard(){
   const b=$('board');b.innerHTML='';
   ROWS.forEach(r=>{for(let c=0;c<5;c++){const d=document.createElement('div');d.className='cell'+((r==='mc'||r==='ac')?' small':'')+((r==='bot'||r==='r2')?' uline':'');d.id=`c-${r}-${c}`;b.appendChild(d);}});
 }
-function setCell(r,c,txt,cls){const e=cell(r,c);e.innerHTML='';e.append(document.createTextNode(txt));e.className=e.className.replace(/\b(c[mdsgcx]|csum|used|pop|slot|act|win)\b/g,'').trim();if(cls)e.classList.add(...cls.split(' '));void e.offsetWidth;e.classList.add('pop');return e;}
+function setCell(r,c,txt){const e=cell(r,c);const kids=[...e.querySelectorAll('.badge')];e.innerHTML='';e.append(document.createTextNode(txt));kids.forEach(k=>e.appendChild(k));e.className=e.className.replace(/\b(p[1-4]|cx|used|pop|slot|act|win)\b/g,'').trim();e.classList.add(/^\d$/.test(String(txt))?pc(c):'cx');void e.offsetWidth;e.classList.add('pop');return e;}
 function badge(r,c,em,pos){const s=document.createElement('span');s.className='badge '+pos;s.textContent=em;cell(r,c).appendChild(s);}
 function clearMarks(){document.querySelectorAll('.cell.act,.cell.slot').forEach(e=>e.classList.remove('act','slot'));}
 
@@ -261,9 +259,10 @@ function runStep(){
     SND.place();setTimeout(()=>{si++;runStep();},1300);return;
   }
   if(st.k==='mul'){
+    st.phase='u';
     const pe=cell(st.pr[0],st.pr[1]),ce=cell(st.ch[0],st.ch[1]);
     pe.classList.add('act');ce.classList.add('act');
-    st.put.forEach(p=>cell(p[0],p[1]).classList.add('slot'));
+    const last=st.put[st.put.length-1];cell(last[0],last[1]).classList.add('slot');
     if(st.useCarry)cell('mc',3).classList.add('act');
     $('expr').innerHTML='';$('ctrl').innerHTML='';busy=true;
     kisses(pe,ce,()=>{busy=false;renderExpr();showKeypad();});return;
@@ -272,16 +271,16 @@ function runStep(){
     cell('r2',4).classList.add('slot');$('expr').innerHTML='<span class="cx">✖</span><span class="em">➜</span><span class="em">👨</span>';
     say('שמים איקס');
     $('ctrl').innerHTML='<button class="bigbtn" id="xBtn">✖️</button>';
-    $('xBtn').onclick=()=>{if(busy)return;busy=true;SND.tap();fly('✖',$('xBtn'),cell('r2',4),'cx',550,()=>{setCell('r2',4,'✖','cx');SND.place();vib(25);busy=false;si++;runStep();});};
+    $('xBtn').onclick=()=>{if(busy)return;busy=true;SND.tap();fly('✖',$('xBtn'),cell('r2',4),'cx',550,()=>{setCell('r2',4,'✖');SND.place();vib(25);busy=false;si++;runStep();});};
     return;
   }
   if(st.k==='drop'){
     const src=cell(st.src[0],st.src[1]),dst=cell('sum',st.col);
     src.classList.add('act');dst.classList.add('slot');
-    if(st.col===4){cell('r2',4).classList.add('act');$('expr').innerHTML=`<span class="cm">${st.d}</span><span>+</span><span class="cx">✖</span>`;}
-    else $('expr').innerHTML=`<span class="${st.src[0]==='r1'?'cm':st.src[0]==='r2'?'cd':'cc'}">${st.d}</span><span>⬇</span>`;
+    if(st.col===4){cell('r2',4).classList.add('act');$('expr').innerHTML=`<span class="${pc(4)}">${st.d}</span><span>+</span><span class="cx">✖</span>`;}
+    else $('expr').innerHTML=`<span class="${pc(st.col)}">${st.d}</span><span>⬇</span>`;
     $('ctrl').innerHTML='<button class="bigbtn" id="dropBtn">⬇️</button>';
-    $('dropBtn').onclick=()=>{if(busy)return;busy=true;SND.tap();fly(st.d,src,dst,'csum',550,()=>{setCell('sum',st.col,st.d,'csum');SND.place();vib(25);busy=false;si++;setTimeout(runStep,250);});};
+    $('dropBtn').onclick=()=>{if(busy)return;busy=true;SND.tap();fly(st.d,src,dst,pc(st.col),550,()=>{setCell('sum',st.col,st.d);SND.place();vib(25);busy=false;si++;setTimeout(runStep,250);});};
     return;
   }
   if(st.k==='add'){
@@ -291,40 +290,48 @@ function runStep(){
     renderExpr();showKeypad();return;
   }
 }
+// place-value colour: the only use of colour in the game
+const pc=c=>'p'+c;
+// where each single digit goes
+function unitsDest(st){return st.k==='add'?['sum',st.col]:st.put[st.put.length-1];}
+function tensDest(st){if(st.k==='add')return['ac',st.col-1];if(st.phase==='c')return['mc',3];return st.put[0];}
+function nextPhase(st){
+  if(st.phase!=='u')return null;
+  if(st.k==='add')return st.ans>=10?'c':null;
+  if(st.carry)return'c';
+  if(st.put.length===2)return't';
+  return null;
+}
 function renderExpr(){
   const st=ex.steps[si];let h='';
   if(st.k==='mul'){
-    h=`<span class="${st.pr[2]}">${st.x}</span><span>×</span><span class="${st.ch[2]}">${st.y}</span>`;
-    if(st.add)h+=`<span>+</span><span class="crt">${st.add}</span>`;
+    h=`<span class="${pc(st.pr[1])}">${st.x}</span><span>×</span><span class="${pc(st.ch[1])}">${st.y}</span>`;
+    if(st.add)h+=`<span>+</span><span class="crt ${pc(3)}">${st.add}</span>`;
   }else{
-    h=st.terms.map(t=>`<span class="${t[1]}">${t[0]}</span>`).join('<span>+</span>');
-    if(st.carryIn)h+=`<span>+</span><span class="crt">${st.carryIn}</span>`;
+    h=st.terms.map(t=>`<span class="${pc(st.col)}">${t[0]}</span>`).join('<span>+</span>');
+    if(st.carryIn)h+=`<span>+</span><span class="crt ${pc(st.col)}">${st.carryIn}</span>`;
   }
-  const L=String(curAns(st)).length;let q='';
-  for(let i=0;i<Math.max(L,input.length);i++)q+=`<span class="qd" data-i="${i}">${input[i]||'&nbsp;'}</span>`;
-  h+=`<span>=</span><span class="q" id="q">${q}</span>`;
-  if(st.k==='add'&&st.phase==='c')h+=`<span class="csum" style="margin-inline-start:-.2em">${st.ans%10}</span>`;
+  h+=`<span>=</span><span class="q" id="q"><span class="qd">${input||'&nbsp;'}</span></span>`;
+  if(st.phase!=='u'){const u=unitsDest(st);h+=`<span class="${pc(u[1])}" style="margin-inline-start:-.2em">${st.ans%10}</span>`;}
   $('expr').innerHTML=h;
 }
-// addition: first only the units digit, then (if needed) the digit to remember
-function curAns(st){if(st.k!=='add')return st.ans;return st.phase==='c'?Math.floor(st.ans/10):st.ans%10;}
+// always exactly one digit: first the units, then (if any) the tens
+function curAns(st){return st.phase==='u'?st.ans%10:Math.floor(st.ans/10);}
 function showKeypad(){
   const c=$('ctrl');c.innerHTML='';const k=document.createElement('div');k.className='keypad';
-  ['1','2','3','4','5','6','7','8','9','⌫','0','✓'].forEach(t=>{const b=document.createElement('button');b.className='key'+(t==='✓'?' ok':t==='⌫'?' del':'');b.textContent=t;
+  ['1','2','3','4','5','6','7','8','9','','0',''].forEach(t=>{
+    if(!t){k.appendChild(document.createElement('span'));return;}
+    const b=document.createElement('button');b.className='key';b.textContent=t;
     b.onpointerdown=e=>{e.preventDefault();press(t);};k.appendChild(b);});
   c.appendChild(k);
 }
 function press(t){
   if(busy)return;const st=ex.steps[si];if(!st||(st.k!=='mul'&&st.k!=='add'))return;
-  unlock();
-  if(t==='⌫'){input=input.slice(0,-1);SND.tap();renderExpr();return;}
-  if(t==='✓'){if(input)submit();return;}
-  if(input.length>=2)return;
-  input+=t;SND.tap();renderExpr();
-  if(input.length===String(curAns(st)).length)setTimeout(submit,180);
+  if(!/^\d$/.test(t))return;
+  unlock();input=t;SND.tap();renderExpr();busy=true;setTimeout(()=>{busy=false;submit();},200);
 }
 function submit(){
-  const st=ex.steps[si];if(busy)return;
+  const st=ex.steps[si];if(busy||!input)return;
   const v=parseInt(input,10);const kind=st.k==='mul'?'mul':'add';
   if(v===curAns(st)){
     if(mistakes===0)store[kind][0]++;store[kind][1]++;save();
@@ -332,11 +339,15 @@ function submit(){
     $('hint').textContent='';
     placeAnswer(st,()=>{
       busy=false;
-      if(st.k==='add'&&st.phase==='u'&&st.ans>=10){ // now: what do we remember?
-        st.phase='c';mistakes=0;input='';$('hint').textContent='';
-        cell('sum',st.col).classList.remove('slot');cell('ac',st.col-1).classList.add('slot');
+      const np=nextPhase(st);
+      if(np){
+        const prev=unitsDest(st);cell(prev[0],prev[1]).classList.remove('slot');
+        st.phase=np;mistakes=0;input='';$('hint').textContent='';
+        const d=tensDest(st);cell(d[0],d[1]).classList.add('slot');
         renderExpr();return;
       }
+      if(st.k==='mul'&&st.useCarry)cell('mc',3).classList.add('used');
+      if(st.k==='add'&&st.carryIn)cell('ac',st.col).classList.add('used');
       si++;setTimeout(runStep,350);
     });
   }else{
@@ -363,45 +374,21 @@ function showHint(st){
   h.textContent=`👉 ${curAns(st)}`;
 }
 function placeAnswer(st,cb){
-  const ds=[...document.querySelectorAll('#q .qd')];const s=String(st.ans);
-  const jobs=[];
-  if(st.k==='mul'){
-    if(st.carry){ // units -> row; tens -> to the son, who passes it with kisses to the daughter
-      const son=cell('top',4),dau=cell('top',3),cr=cell('mc',3);
-      ds.forEach(d=>d.style.visibility='hidden');
-      fly(s[1],ds[1],cell(st.put[0][0],st.put[0][1]),st.row,560,()=>{
-        setCell(st.put[0][0],st.put[0][1],s[1],st.row);SND.place();
-        fly(s[0],ds[0],son,'cc',480,()=>{
-          kisses(son,dau,()=>{
-            fly(s[0],son,cr,st.carry[3],480,()=>{setCell('mc',3,s[0],st.carry[3]);SND.place();vib(25);setTimeout(cb,300);});
-          });
-        });
-      });
-      return;
-    }else{
-      st.put.forEach((p,i)=>{const di=s.length-st.put.length+i;jobs.push([ds[di]||ds[0],p[0],p[1],String(p[2]),st.row]);});
-      if(st.ans>=10&&st.put.length===1){} // not possible
-    }
-  }else{
-    if(st.phase==='u')jobs.push([ds[0],'sum',st.col,String(st.ans%10),'csum']);
-    else jobs.push([ds[0],'ac',st.col-1,String(Math.floor(st.ans/10)),'cc']);
+  const from=document.querySelector('#q .qd');const txt=String(curAns(st));
+  if(from)from.style.visibility='hidden';
+  const done=(r,c)=>{setCell(r,c,txt);SND.place();setTimeout(cb,250);};
+  if(st.phase==='u'){const[r,c]=unitsDest(st);fly(txt,from,cell(r,c),pc(c),560,()=>done(r,c));return;}
+  if(st.k==='mul'&&st.phase==='c'){ // the son passes it to the daughter with kisses
+    const son=cell('top',4),dau=cell('top',3);
+    fly(txt,from,son,pc(3),480,()=>kisses(son,dau,()=>fly(txt,son,cell('mc',3),pc(3),480,()=>{vib(25);done('mc',3);})));
+    return;
   }
-  let n=jobs.length;
-  jobs.forEach((j,i)=>setTimeout(()=>{
-    const[from,r,c,txt,cls]=j;const to=cell(r,c);
-    if(from)from.style.visibility='hidden';
-    fly(txt,from||$('expr'),to,cls,560,()=>{setCell(r,c,txt,cls);SND.place();
-      if(--n===0){
-        if(st.k==='mul'&&st.useCarry)cell('mc',3).classList.add('used');
-        if(st.k==='add'&&st.carryIn)cell('ac',st.col).classList.add('used');
-        setTimeout(cb,250);
-      }});
-  },i*320));
+  const[r,c]=tensDest(st);fly(txt,from,cell(r,c),pc(c),560,()=>done(r,c));
 }
 function finishExercise(){
   clearMarks();$('ctrl').innerHTML='';
   for(let c=1;c<=4;c++){const e=cell('sum',c);if(e.textContent.trim())e.classList.add('win');}
-  $('expr').innerHTML=`<span class="cg">${ex.a}</span><span>×</span><span class="cd">${ex.b}</span><span>=</span><span>${ex.prod}</span>`;
+  $('expr').innerHTML=`<span>${ex.a}</span><span>×</span><span>${ex.b}</span><span>=</span><span>${ex.prod}</span>`;
   SND.win();vib([60,40,60]);burst(cell('sum',2),['⭐','💋','✨']);
   roundStars.push(exFlawless);store.exDone++;save();updateHeader();
   setTimeout(()=>{
