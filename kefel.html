@@ -166,8 +166,10 @@ const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 let lastPair='';
 function gen(level){
   const R={1:[[1,4],[1,4],[1,3],[2,3]],2:[[1,6],[1,6],[1,5],[2,5]],3:[[1,9],[2,9],[2,9],[2,9]],4:[[5,9],[5,9],[5,9],[5,9]]}[level];
-  let T1,U1,T2,U2,k;
-  do{T1=rnd(...R[0]);U1=rnd(...R[1]);T2=rnd(...R[2]);U2=rnd(...R[3]);k=`${T1}${U1}x${T2}${U2}`;}while(k===lastPair);
+  let T1,U1,T2,U2,k,tries=0;
+  const wantCarry=Math.random()<0.65; // most exercises have something for the son to pass to the daughter
+  do{T1=rnd(...R[0]);U1=rnd(...R[1]);T2=rnd(...R[2]);U2=rnd(...R[3]);k=`${T1}${U1}x${T2}${U2}`;tries++;}
+  while(tries<300&&(k===lastPair||((U2*U1>=10||T2*U1>=10)!==wantCarry)));
   lastPair=k;
   const a=T1*10+U1,b=T2*10+U2,steps=[];
   // mom
@@ -283,6 +285,7 @@ function runStep(){
     return;
   }
   if(st.k==='add'){
+    st.phase='u';
     ['r1','r2','ac'].forEach(r=>{if(cell(r,st.col).textContent.trim())cell(r,st.col).classList.add('act');});
     cell('sum',st.col).classList.add('slot');
     renderExpr();showKeypad();return;
@@ -297,11 +300,14 @@ function renderExpr(){
     h=st.terms.map(t=>`<span class="${t[1]}">${t[0]}</span>`).join('<span>+</span>');
     if(st.carryIn)h+=`<span>+</span><span class="crt">${st.carryIn}</span>`;
   }
-  const L=String(st.ans).length;let q='';
+  const L=String(curAns(st)).length;let q='';
   for(let i=0;i<Math.max(L,input.length);i++)q+=`<span class="qd" data-i="${i}">${input[i]||'&nbsp;'}</span>`;
   h+=`<span>=</span><span class="q" id="q">${q}</span>`;
+  if(st.k==='add'&&st.phase==='c')h+=`<span class="csum" style="margin-inline-start:-.2em">${st.ans%10}</span>`;
   $('expr').innerHTML=h;
 }
+// addition: first only the units digit, then (if needed) the digit to remember
+function curAns(st){if(st.k!=='add')return st.ans;return st.phase==='c'?Math.floor(st.ans/10):st.ans%10;}
 function showKeypad(){
   const c=$('ctrl');c.innerHTML='';const k=document.createElement('div');k.className='keypad';
   ['1','2','3','4','5','6','7','8','9','⌫','0','✓'].forEach(t=>{const b=document.createElement('button');b.className='key'+(t==='✓'?' ok':t==='⌫'?' del':'');b.textContent=t;
@@ -315,16 +321,24 @@ function press(t){
   if(t==='✓'){if(input)submit();return;}
   if(input.length>=2)return;
   input+=t;SND.tap();renderExpr();
-  if(input.length===String(st.ans).length)setTimeout(submit,180);
+  if(input.length===String(curAns(st)).length)setTimeout(submit,180);
 }
 function submit(){
   const st=ex.steps[si];if(busy)return;
   const v=parseInt(input,10);const kind=st.k==='mul'?'mul':'add';
-  if(v===st.ans){
+  if(v===curAns(st)){
     if(mistakes===0)store[kind][0]++;store[kind][1]++;save();
     busy=true;SND.good();vib(30);
     $('hint').textContent='';
-    placeAnswer(st,()=>{busy=false;si++;setTimeout(runStep,350);});
+    placeAnswer(st,()=>{
+      busy=false;
+      if(st.k==='add'&&st.phase==='u'&&st.ans>=10){ // now: what do we remember?
+        st.phase='c';mistakes=0;input='';$('hint').textContent='';
+        cell('sum',st.col).classList.remove('slot');cell('ac',st.col-1).classList.add('slot');
+        renderExpr();return;
+      }
+      si++;setTimeout(runStep,350);
+    });
   }else{
     mistakes++;if(mistakes>=2)exFlawless=false;
     if(mistakes===1&&st.k==='mul'){const key=`${st.x}×${st.y}`+(st.add?`+${st.add}`:'');store.facts[key]=(store.facts[key]||0)+1;save();}
@@ -341,28 +355,36 @@ function showHint(st){
       if(st.add)h.textContent=`${st.x} × ${st.y} = ${st.x*st.y}   ➜   ${st.x*st.y} + ${st.add} = ?`;
       else{const lo=Math.min(st.x,st.y),hi=Math.max(st.x,st.y);h.textContent=Array(lo).fill(hi).join(' + ')+' = ?';}
     }else{
-      const vals=st.terms.map(t=>t[0]);if(st.carryIn)vals.push(st.carryIn);
-      if(vals.length>=3){const s0=vals[0]+vals[1];h.textContent=`${vals[0]} + ${vals[1]} = ${s0}   ➜   ${s0} + ${vals[2]} = ?`;}
-      else h.textContent=vals.map(v=>'●'.repeat(v)).join('  +  ');
+      if(st.phase==='c'){h.textContent='●'.repeat(10)+'  '+'●'.repeat(st.ans%10);}
+      else{const vals=st.terms.map(t=>t[0]);if(st.carryIn)vals.push(st.carryIn);h.textContent=vals.map(v=>'●'.repeat(v)).join('  +  ');}
     }
     return;
   }
-  h.textContent=`👉 ${st.ans}`;
+  h.textContent=`👉 ${curAns(st)}`;
 }
 function placeAnswer(st,cb){
   const ds=[...document.querySelectorAll('#q .qd')];const s=String(st.ans);
   const jobs=[];
   if(st.k==='mul'){
-    if(st.carry){ // units -> row, tens -> carry over daughter
-      jobs.push([ds[1],st.put[0][0],st.put[0][1],s[1],st.row]);
-      jobs.push([ds[0],'mc',3,s[0],st.carry[3]]);
+    if(st.carry){ // units -> row; tens -> to the son, who passes it with kisses to the daughter
+      const son=cell('top',4),dau=cell('top',3),cr=cell('mc',3);
+      ds.forEach(d=>d.style.visibility='hidden');
+      fly(s[1],ds[1],cell(st.put[0][0],st.put[0][1]),st.row,560,()=>{
+        setCell(st.put[0][0],st.put[0][1],s[1],st.row);SND.place();
+        fly(s[0],ds[0],son,'cc',480,()=>{
+          kisses(son,dau,()=>{
+            fly(s[0],son,cr,st.carry[3],480,()=>{setCell('mc',3,s[0],st.carry[3]);SND.place();vib(25);setTimeout(cb,300);});
+          });
+        });
+      });
+      return;
     }else{
       st.put.forEach((p,i)=>{const di=s.length-st.put.length+i;jobs.push([ds[di]||ds[0],p[0],p[1],String(p[2]),st.row]);});
       if(st.ans>=10&&st.put.length===1){} // not possible
     }
   }else{
-    jobs.push([ds[s.length-1],'sum',st.col,s[s.length-1],'csum']);
-    if(st.ans>=10)jobs.push([ds[0],'ac',st.col-1,s[0],'cc']);
+    if(st.phase==='u')jobs.push([ds[0],'sum',st.col,String(st.ans%10),'csum']);
+    else jobs.push([ds[0],'ac',st.col-1,String(Math.floor(st.ans/10)),'cc']);
   }
   let n=jobs.length;
   jobs.forEach((j,i)=>setTimeout(()=>{
